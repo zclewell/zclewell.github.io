@@ -1,7 +1,24 @@
+div {
+
+}
 body {
+  background-image: url("doge.gif");
+  background-color: #5eedaa;
+  background-position: center;
+}
+#toolbar {
   background-color: #002b36;
+  columns: 100px 4;
+  padding: 20px 20px 20px 20px;
+  border-radius: 10px;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  left: 10px;
 }
 h3 {
+  margin-top: 0px;
+  margin-bottom: 0px;
   color: #839496;
   font-family: monospace;
   font-size: 20;
