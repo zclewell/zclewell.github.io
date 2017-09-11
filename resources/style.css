@@ -2,11 +2,11 @@ div {
 
 }
 body {
-  background-image: url("doge.gif");
+  /*background-image: url("doge.gif");*/
   background-color: #5eedaa;
   background-position: center;
 }
-#toolbar {
+#bottombar {
   background-color: #002b36;
   columns: 100px 4;
   padding: 20px 20px 20px 20px;
