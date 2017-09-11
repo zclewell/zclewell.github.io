@@ -1,0 +1,28 @@
+body {
+  background-color: #002b36;
+}
+h3 {
+  color: #839496;
+  font-family: monospace;
+  font-size: 20;
+}
+ul {
+  font-family: monospace;
+  font-style: italic;
+  font-size: 14;
+  list-style: none;
+}
+
+/*Formatting colors of links*/
+a:link {
+  color: #268bd2;
+}
+a:visited {
+  color: #6c71c4;
+}
+a:hover {
+  color: #859900;
+}
+a:active {
+  color: #d33682;
+}
