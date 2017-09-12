@@ -1,12 +1,12 @@
-div {
-
-}
 body {
   /*background-image: url("doge.gif");*/
-  background-color: #5eedaa;
+  /*background-color: #5eedaa;*/
   background-position: center;
 }
 #bottombar {
+  /*text-align: center;*/
+
+  /*display: inline-table;*/
   background-color: #002b36;
   columns: 100px 4;
   padding: 20px 20px 20px 20px;
@@ -22,6 +22,7 @@ h3 {
   color: #839496;
   font-family: monospace;
   font-size: 20;
+  text-align: center;
 }
 ul {
   font-family: monospace;
@@ -42,4 +43,8 @@ a:hover {
 }
 a:active {
   color: #d33682;
+}
+
+.class_list {
+  height: 110px;
 }
