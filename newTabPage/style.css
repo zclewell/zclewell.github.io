@@ -3,6 +3,7 @@ body {
   /*background-color: #5eedaa;*/
   background-position: center;
 }
+
 #bottombar {
   /*text-align: center;*/
 
@@ -47,4 +48,18 @@ a:active {
 
 .class_list {
   height: 120px;
+}
+
+#videoStream {
+  background-color: #000000;
+  border-bottom-left-radius: 10px;
+  border-top-left-radius: 10px;
+}
+
+#videoStreamContainer {
+  background-color: #93a1a1;
+  margin: 10px;
+  border-radius: 10px;
+  bottom: 10px;
+  position: relative;
 }
