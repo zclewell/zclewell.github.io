@@ -28,18 +28,6 @@ function dateInputHandler(e) {
 	document.getElementById('output').innerHTML = wordle;
 }
 
-const getMobileOS = () => {
-  const ua = navigator.userAgent
-  if (/android/i.test(ua)) {
-    return "Android"
-  }
-  else if (/iPad|iPhone|iPod/.test(ua))
-     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1){
-    return "iOS"
-  }
-  return "Other"
-}
-
 Date.prototype.toDateInputValue = (function() {
     var local = new Date(this);
     local.setMinutes(this.getMinutes() - this.getTimezoneOffset());
@@ -47,5 +35,4 @@ Date.prototype.toDateInputValue = (function() {
 });
 
 console.log('loaded')
-console.log(getMobileOs())
 
