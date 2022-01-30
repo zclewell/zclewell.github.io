@@ -17,9 +17,13 @@ function genNumber(date) {
 }
 
 function dateInputHandler(e) {
+	console.log(e)
 	let value = e.target.value.replace("-", "/")
+	console.log(value)
 	let date = new Date(Date.parse(value))
+	console.log(date)
 	let wordle = genWord(date)
+	console.log(worlde)
 
 	document.getElementById('output').innerHTML = wordle;
 }
