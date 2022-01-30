@@ -18,14 +18,26 @@ function genNumber(date) {
 
 function dateInputHandler(e) {
 	console.log(e)
-	let value = e.target.value.replace("-", "/")
+	var value = e.target.value.replaceAll("-", "/")
 	console.log(value)
 	let date = new Date(Date.parse(value))
 	console.log(date)
 	let wordle = genWord(date)
-	console.log(worlde)
+	console.log(wordle)
 
 	document.getElementById('output').innerHTML = wordle;
+}
+
+const getMobileOS = () => {
+  const ua = navigator.userAgent
+  if (/android/i.test(ua)) {
+    return "Android"
+  }
+  else if (/iPad|iPhone|iPod/.test(ua))
+     || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1){
+    return "iOS"
+  }
+  return "Other"
 }
 
 Date.prototype.toDateInputValue = (function() {
@@ -35,4 +47,5 @@ Date.prototype.toDateInputValue = (function() {
 });
 
 console.log('loaded')
+console.log(getMobileOs())
 
