@@ -41,6 +41,11 @@
 </head>
 
 <h1>Wordle Oracle</h1>
+<h4>Version:</h4>
+<select id="version"/ onchange="versionInputHandler(event);">
+	<option value="original">Original</option>
+	<option value="nyt">New York Times</option>
+</select>
 <h4>Chose desired date:</h4>
 <input type="date" id="dateInput" min="2021-06-19" name="dateInput" onchange="dateInputHandler(event);"/>
 <h4>Wordle:</h4>
