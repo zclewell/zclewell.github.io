@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibed Micro Apps</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+        .overlay-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #111827;
+            text-align: center;
+            pointer-events: none;
+        }
+        .overlay-content h1, .overlay-content p {
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="overlay-content">
+        <h1 class="text-4xl md:text-6xl font-bold mb-4">Micro Apps</h1>
+        <p class="text-lg md:text-xl text-gray-600">Collection of vibe coded micro apps, have fun!</p>
+    </div>
+
+    <script>
+        // Configuration
+        const projects = [
+            { name: "Image Border Adder", url: "image_border_adder.html" },
+            { name: "Image Transparency Editor", url: "image_transparency_editor.html" },
+            { name: "Layered GIF Editor", url: "layered_gif_editor.html" }
+        ];
+
+        // Matter.js setup
+        const { Engine, Render, Runner, World, Bodies, Mouse, MouseConstraint, Events, Composite } = Matter;
+
+        let engine, render, runner, world, mouseConstraint;
+        let isDragging = false;
+        let dragStartTime = 0;
+        let dragStartPosition = { x: 0, y: 0 };
+        
+        const CLICK_THRESHOLD = 300;
+        const CLICK_DISTANCE_THRESHOLD = 10;
+        const DRAG_DELAY = 150;
+
+        // Generate consistent color from text
+        function generateColorFromText(text) {
+            let hash = 0;
+            for (let i = 0; i < text.length; i++) {
+                const char = text.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            
+            const hue = Math.abs(hash) % 360;
+            const saturation = 60 + (Math.abs(hash) % 20);
+            const lightness = 50 + (Math.abs(hash >> 8) % 20);
+            
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+
+        // Create pill texture
+        function createPillTexture(text, color, width, height) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const radius = height / 2;
+            
+            canvas.width = width;
+            canvas.height = height;
+
+            // Draw pill shape
+            context.fillStyle = color;
+            context.beginPath();
+            context.arc(width - radius, radius, radius, -Math.PI / 2, Math.PI / 2);
+            context.arc(radius, radius, radius, Math.PI / 2, -Math.PI / 2);
+            context.closePath();
+            context.fill();
+
+            // Draw text
+            context.fillStyle = 'white';
+            context.font = 'bold 16px Inter, Arial, sans-serif';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, width / 2, height / 2);
+            
+            return canvas.toDataURL();
+        }
+
+        // Create pills
+        function createPills() {
+            const pills = [];
+            const pillHeight = 50;
+            const minWidth = 160;
+            const padding = 30;
+
+            projects.forEach(project => {
+                const color = generateColorFromText(project.name);
+                
+                // Calculate width based on text
+                const tempCanvas = document.createElement('canvas');
+                const tempContext = tempCanvas.getContext('2d');
+                tempContext.font = 'bold 16px Inter, Arial, sans-serif';
+                const textWidth = tempContext.measureText(project.name).width;
+                const pillWidth = Math.max(minWidth, textWidth + padding);
+                
+                const pill = Bodies.rectangle(
+                    window.innerWidth / 2 + (Math.random() - 0.5) * 100,
+                    window.innerHeight / 2 + (Math.random() - 0.5) * 100,
+                    pillWidth,
+                    pillHeight,
+                    {
+                        chamfer: { radius: pillHeight / 2 },
+                        restitution: 0.8,
+                        friction: 0.1,
+                        density: 0.005,
+                        label: 'pill',
+                        render: {
+                            strokeStyle: '#374151',
+                            lineWidth: 2,
+                            sprite: {
+                                texture: createPillTexture(project.name, color, pillWidth, pillHeight),
+                                xScale: 1,
+                                yScale: 1
+                            }
+                        },
+                        customData: {
+                            name: project.name,
+                            url: project.url
+                        }
+                    }
+                );
+                pills.push(pill);
+            });
+            return pills;
+        }
+
+        // Create boundaries
+        function createBoundaries() {
+            const wallThickness = 100;
+            const boundaries = [
+                // Floor
+                Bodies.rectangle(window.innerWidth / 2, window.innerHeight + wallThickness / 2, window.innerWidth, wallThickness, { isStatic: true, render: { visible: false } }),
+                // Left wall
+                Bodies.rectangle(-wallThickness / 2, window.innerHeight / 2, wallThickness, window.innerHeight, { isStatic: true, render: { visible: false } }),
+                // Right wall
+                Bodies.rectangle(window.innerWidth + wallThickness / 2, window.innerHeight / 2, wallThickness, window.innerHeight, { isStatic: true, render: { visible: false } }),
+                // Ceiling
+                Bodies.rectangle(window.innerWidth / 2, -wallThickness / 2, window.innerWidth, wallThickness, { isStatic: true, render: { visible: false } })
+            ];
+            World.add(world, boundaries);
+        }
+
+        // Find pill at position
+        function findPillAtPosition(x, y) {
+            const pills = Composite.allBodies(world).filter(body => body.label === 'pill');
+            for (const pill of pills) {
+                const pillX = pill.position.x;
+                const pillY = pill.position.y;
+                const pillWidth = pill.bounds.max.x - pill.bounds.min.x;
+                const pillHeight = pill.bounds.max.y - pill.bounds.min.y;
+                
+                if (x >= pillX - pillWidth/2 && x <= pillX + pillWidth/2 &&
+                    y >= pillY - pillHeight/2 && y <= pillY + pillHeight/2) {
+                    return pill;
+                }
+            }
+            return null;
+        }
+
+        // Handle mouse events
+        function setupMouseEvents() {
+            Events.on(mouseConstraint, 'mousedown', (event) => {
+                dragStartTime = new Date().getTime();
+                dragStartPosition = { x: event.mouse.position.x, y: event.mouse.position.y };
+                isDragging = false;
+                
+                const clickedPill = findPillAtPosition(event.mouse.position.x, event.mouse.position.y);
+                
+                setTimeout(() => {
+                    if (!isDragging && clickedPill) {
+                        isDragging = true;
+                        mouseConstraint.body = clickedPill;
+                    }
+                }, DRAG_DELAY);
+            });
+
+            Events.on(mouseConstraint, 'mousemove', (event) => {
+                if (!isDragging) {
+                    const distance = Math.sqrt(
+                        Math.pow(event.mouse.position.x - dragStartPosition.x, 2) + 
+                        Math.pow(event.mouse.position.y - dragStartPosition.y, 2)
+                    );
+                    
+                    if (distance > 10) {
+                        isDragging = true;
+                        const pill = findPillAtPosition(event.mouse.position.x, event.mouse.position.y);
+                        if (pill) mouseConstraint.body = pill;
+                    }
+                }
+            });
+
+            Events.on(mouseConstraint, 'mouseup', (event) => {
+                const timeDiff = new Date().getTime() - dragStartTime;
+                const distance = Math.sqrt(
+                    Math.pow(event.mouse.position.x - dragStartPosition.x, 2) + 
+                    Math.pow(event.mouse.position.y - dragStartPosition.y, 2)
+                );
+                
+                const isQuickClick = timeDiff < CLICK_THRESHOLD && distance < CLICK_DISTANCE_THRESHOLD && !isDragging;
+                
+                if (isQuickClick) {
+                    const clickedPill = findPillAtPosition(event.mouse.position.x, event.mouse.position.y);
+                    if (clickedPill?.customData?.url) {
+                        mouseConstraint.body = null;
+                        setTimeout(() => {
+                            window.location.href = clickedPill.customData.url;
+                        }, 10);
+                    }
+                }
+                
+                isDragging = false;
+            });
+        }
+
+        // Initialize physics
+        function init() {
+            // Create engine and world
+            engine = Engine.create({ gravity: { y: 0.6 } });
+            world = engine.world;
+
+            // Create renderer
+            render = Render.create({
+                element: document.body,
+                engine: engine,
+                options: {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    wireframes: false,
+                    background: 'transparent',
+                }
+            });
+
+            // Create runner
+            runner = Runner.create();
+            Runner.run(runner, engine);
+            Render.run(render);
+
+            // Add pills and boundaries
+            World.add(world, createPills());
+            createBoundaries();
+
+            // Setup mouse interaction
+            const mouse = Mouse.create(render.canvas);
+            mouseConstraint = MouseConstraint.create(engine, {
+                mouse: mouse,
+                constraint: {
+                    stiffness: 0.05,
+                    damping: 0.8,
+                    render: { visible: false }
+                }
+            });
+            World.add(world, mouseConstraint);
+            render.mouse = mouse;
+
+            // Setup events
+            setupMouseEvents();
+
+            // Ceiling collision detection
+            Events.on(engine, 'beforeUpdate', () => {
+                const pills = Composite.allBodies(world).filter(body => body.label === 'pill');
+                pills.forEach(pill => {
+                    if (pill.position.y < 25) {
+                        pill.position.y = 25;
+                        if (pill.velocity.y < 0) {
+                            pill.velocity.y = -pill.velocity.y * 0.8;
+                        }
+                    }
+                });
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                render.canvas.width = window.innerWidth;
+                render.canvas.height = window.innerHeight;
+                render.options.width = window.innerWidth;
+                render.options.height = window.innerHeight;
+            });
+        }
+
+        // Start when fonts are loaded
+        document.fonts.ready.then(() => {
+            setTimeout(init, 100);
+        });
+
+    </script>
+</body>
+</html>
