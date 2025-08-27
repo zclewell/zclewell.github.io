@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layered GIF Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .layer-item {
+            padding: 12px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .layer-item-header {
+             display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .layer-settings {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .setting-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .setting-control label {
+            font-size: 0.875rem;
+            color: #4b5563;
+            flex-shrink: 0;
+        }
+        .setting-control .input-group {
+            display: flex;
+            align-items: center;
+            width: 60%;
+            gap: 0.5rem;
+        }
+        .setting-control select {
+            width: 100%;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            padding: 4px 8px;
+        }
+        .setting-control input[type="range"] {
+            width: 100%;
+        }
+        .setting-control input[type="number"] {
+             width: 4.5rem;
+             text-align: center;
+             border-radius: 6px;
+             border: 1px solid #d1d5db;
+             padding: 4px 8px;
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-8 space-y-8">
+        
+        <!-- Step 1: Upload Image -->
+        <div id="step-upload">
+            <h1 class="text-3xl font-bold text-center text-gray-900">Layered GIF Generator</h1>
+            <p class="text-center text-gray-500 mt-2">Upload an image to start creating your animated GIF.</p>
+            <div class="mt-6">
+                <label for="image-upload" class="cursor-pointer w-full flex justify-center px-6 py-12 border-2 border-gray-300 border-dashed rounded-lg text-center hover:border-blue-500 transition-colors">
+                    <div>
+                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                        <span class="mt-2 block text-sm font-medium text-gray-900">Click to upload an image</span>
+                        <span class="mt-1 block text-xs text-gray-500">PNG, JPG, GIF up to 10MB</span>
+                    </div>
+                </label>
+                <input id="image-upload" name="image-upload" type="file" class="sr-only" accept="image/*">
+            </div>
+        </div>
+
+        <!-- Step 2: Crop Image -->
+        <div id="step-crop" class="hidden">
+            <h2 class="text-2xl font-bold text-center">Crop Your Image</h2>
+            <p class="text-center text-gray-500 mt-2">Adjust the selection and see a live preview.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-center md:text-left">1. Adjust Crop</h3>
+                    <div id="cropping-container" class="mt-2 bg-gray-200 rounded-lg overflow-hidden flex justify-center items-center">
+                        <img id="image-to-crop" src="" alt="Image to crop">
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-center md:text-left">2. Preview</h3>
+                    <div class="mt-2 flex justify-center">
+                        <canvas id="crop-preview-canvas" class="border rounded-lg aspect-square bg-gray-100" style="background-image: repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%); background-size: 16px 16px;"></canvas>
+                    </div>
+                    <div class="mt-4 flex items-center justify-center">
+                        <input id="circular-mask-checkbox" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="circular-mask-checkbox" class="ml-2 block text-sm text-gray-900">Apply Circular Mask</label>
+                    </div>
+                </div>
+            </div>
+            <button id="crop-button" class="mt-8 w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">Confirm Crop & Continue</button>
+        </div>
+
+
+        <!-- Step 3: Generate GIF -->
+        <div id="step-generate" class="hidden">
+            <h2 class="text-2xl font-bold text-center">Build Your GIF</h2>
+            <p class="text-center text-gray-500 mt-2">Add, remove, and reorder effects to create your animation.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+                <!-- Left side: Controls -->
+                <div>
+                    <div class="w-full p-4 border rounded-lg bg-gray-50 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Global Settings</h3>
+                        <div id="global-settings-container">
+                             <!-- Duration Slider will be generated here -->
+                        </div>
+                    </div>
+
+                    <div id="background-color-container" class="w-full p-4 border rounded-lg bg-gray-50 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Background Color</h3>
+                        <div class="setting-control">
+                            <label for="background-color-select" class="text-sm">Preset</label>
+                            <select id="background-color-select" class="border-gray-300 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm py-1 w-32">
+                                <option value="transparent">Transparent</option>
+                                <option value="white">White</option>
+                                <option value="black">Black</option>
+                                <option value="custom" hidden>Custom</option>
+                            </select>
+                        </div>
+                        <div id="rgba-sliders-container" class="mt-3 space-y-2">
+                            <!-- RGBA Sliders will be generated here -->
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-semibold text-gray-800">Add Effects</h3>
+                    <div id="available-effects" class="mt-2 grid grid-cols-2 lg:grid-cols-3 gap-2">
+                        <button data-effect="wheel" class="add-effect-btn w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">Add Wheel</button>
+                        <button data-effect="pulse" class="add-effect-btn w-full bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors">Add Pulse</button>
+                        <button data-effect="wiggle" class="add-effect-btn w-full bg-teal-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-teal-600 transition-colors">Add Wiggle</button>
+                        <button data-effect="rainbow" class="add-effect-btn w-full bg-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors">Add Rainbow</button>
+                        <button data-effect="pixelate" class="add-effect-btn w-full bg-rose-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-rose-600 transition-colors">Add Pixelate</button>
+                        <button data-effect="colorShift" class="add-effect-btn w-full bg-yellow-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">Add Color Shift</button>
+                        <button data-effect="glitch" class="add-effect-btn w-full bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors">Add Glitch</button>
+                    </div>
+                    <h3 class="text-lg font-semibold mt-6 text-gray-800">Active Layers</h3>
+                    <div id="active-layers" class="mt-2 border rounded-lg p-2 min-h-[120px] space-y-2 bg-gray-50">
+                        <p id="no-effects-message" class="text-gray-400 text-sm text-center p-4">No effects added yet.</p>
+                    </div>
+                </div>
+                <!-- Right side: Preview -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Live Preview</h3>
+                    <canvas id="preview-canvas" class="mt-2 border rounded-lg w-full aspect-square bg-gray-100" style="background-image: repeating-conic-gradient(#e5e7eb 0% 25%, transparent 0% 50%); background-size: 16px 16px;"></canvas>
+                </div>
+            </div>
+            <div class="mt-8 flex flex-col md:flex-row justify-center items-center gap-4">
+                <button id="generate-final-gif" class="w-full max-w-xs bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">Generate & Download GIF</button>
+                <button id="start-over-button" class="w-full max-w-xs bg-gray-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-600 transition-colors">Start Over</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const stepUpload = document.getElementById('step-upload');
+            const stepCrop = document.getElementById('step-crop');
+            const stepGenerate = document.getElementById('step-generate');
+            const imageUploadInput = document.getElementById('image-upload');
+            const imageToCrop = document.getElementById('image-to-crop');
+            const cropButton = document.getElementById('crop-button');
+            const circularMaskCheckbox = document.getElementById('circular-mask-checkbox');
+            const backgroundColorContainer = document.getElementById('background-color-container');
+            const backgroundColorSelect = document.getElementById('background-color-select');
+            const rgbaSlidersContainer = document.getElementById('rgba-sliders-container');
+            const globalSettingsContainer = document.getElementById('global-settings-container');
+            const availableEffectsContainer = document.getElementById('available-effects');
+            const activeLayersContainer = document.getElementById('active-layers');
+            const noEffectsMessage = document.getElementById('no-effects-message');
+            const previewCanvas = document.getElementById('preview-canvas');
+            const generateFinalGifButton = document.getElementById('generate-final-gif');
+            const startOverButton = document.getElementById('start-over-button');
+
+            // --- State Variables ---
+            let cropper = null;
+            let croppedImage = null;
+            let gifWorkerUrl = null;
+            let activeEffects = [];
+            let animationFrameId = null;
+            const previewCtx = previewCanvas.getContext('2d');
+            
+            // --- Initialization ---
+            const initGifWorker = async () => {
+                try {
+                    const response = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                    const scriptContent = await response.text();
+                    const blob = new Blob([scriptContent], { type: 'application/javascript' });
+                    gifWorkerUrl = URL.createObjectURL(blob);
+                } catch (e) { console.error("Failed to load gif.worker.js.", e); }
+            };
+            initGifWorker();
+
+            const createSlider = (label, setting, min, max, step, value, index = '') => `
+                <div class="setting-control">
+                    <label for="${setting}-${index}">${label}</label>
+                    <div class="input-group">
+                        <input type="range" id="${setting}-${index}" data-index="${index}" data-setting="${setting}" class="layer-setting" min="${min}" max="${max}" step="${step}" value="${value}">
+                        <input type="number" data-index="${index}" data-setting="${setting}" class="layer-setting" min="${min}" max="${max}" step="${step}" value="${value}">
+                    </div>
+                </div>
+            `;
+            
+            const initRgbaSliders = () => {
+                rgbaSlidersContainer.innerHTML = `
+                    ${createSlider('Red', 'bg-r', 0, 255, 1, 0, 'bg')}
+                    ${createSlider('Green', 'bg-g', 0, 255, 1, 0, 'bg')}
+                    ${createSlider('Blue', 'bg-b', 0, 255, 1, 0, 'bg')}
+                    ${createSlider('Alpha', 'bg-a', 0, 1, 0.01, 0, 'bg')}
+                `;
+            };
+            initRgbaSliders();
+            
+            const initGlobalSettings = () => {
+                globalSettingsContainer.innerHTML = createSlider('Duration (s)', 'duration', 0.5, 10, 0.1, 2, 'global');
+            };
+            initGlobalSettings();
+
+            const updateCropPreview = () => {
+                if (!cropper || !cropper.cropped) return;
+
+                const cropPreviewCanvas = document.getElementById('crop-preview-canvas');
+                const ctx = cropPreviewCanvas.getContext('2d');
+                const sourceCanvas = cropper.getCroppedCanvas({ width: 256, height: 256 });
+                
+                cropPreviewCanvas.width = 256;
+                cropPreviewCanvas.height = 256;
+                ctx.clearRect(0,0,256,256);
+
+                if (circularMaskCheckbox.checked) {
+                    ctx.beginPath();
+                    ctx.arc(128, 128, 128, 0, 2 * Math.PI);
+                    ctx.clip();
+                }
+                ctx.drawImage(sourceCanvas, 0, 0);
+            };
+
+            const updateRgbaFromDropdown = () => {
+                const preset = backgroundColorSelect.value;
+                let rgba = {r: 0, g: 0, b: 0, a: 0};
+                if (preset === 'white') rgba = {r: 255, g: 255, b: 255, a: 1};
+                if (preset === 'black') rgba = {r: 0, g: 0, b: 0, a: 1};
+                
+                ['r', 'g', 'b', 'a'].forEach(channel => {
+                    const inputs = rgbaSlidersContainer.querySelectorAll(`[data-setting="bg-${channel}"]`);
+                    inputs.forEach(input => input.value = rgba[channel]);
+                });
+            };
+
+            // --- Step 1: Image Upload ---
+            imageUploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        imageToCrop.src = event.target.result;
+                        stepUpload.classList.add('hidden');
+                        stepCrop.classList.remove('hidden');
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(imageToCrop, { 
+                            aspectRatio: 1, 
+                            viewMode: 1, 
+                            background: false, 
+                            autoCropArea: 0.8,
+                            ready: updateCropPreview,
+                            crop: updateCropPreview
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // --- Step 2: Cropping ---
+            circularMaskCheckbox.addEventListener('change', updateCropPreview);
+
+            cropButton.addEventListener('click', () => {
+                if (!cropper) return;
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                const sourceCanvas = cropper.getCroppedCanvas({ width: 256, height: 256, imageSmoothingQuality: 'high' });
+
+                if (circularMaskCheckbox.checked) {
+                    ctx.beginPath();
+                    ctx.arc(128, 128, 128, 0, 2 * Math.PI);
+                    ctx.clip();
+                }
+                ctx.drawImage(sourceCanvas, 0, 0);
+
+                croppedImage = new Image();
+                croppedImage.src = canvas.toDataURL();
+                croppedImage.onload = () => {
+                    previewCanvas.width = croppedImage.width;
+                    previewCanvas.height = croppedImage.height;
+                    stepCrop.classList.add('hidden');
+                    stepGenerate.classList.remove('hidden');
+                    startPreview();
+                };
+            });
+
+            // --- Step 3: Effects and Preview ---
+            backgroundColorSelect.addEventListener('change', () => {
+                if (backgroundColorSelect.value !== 'custom') {
+                    updateRgbaFromDropdown();
+                }
+            });
+            
+            const syncSliderAndNumberInput = (target) => {
+                const setting = target.dataset.setting;
+                let value = parseFloat(target.value);
+
+                if (target.type === 'number') {
+                    const min = parseFloat(target.min);
+                    const max = parseFloat(target.max);
+                    if (value < min) value = min;
+                    if (value > max) value = max;
+                    target.value = value;
+                }
+
+                const siblings = target.closest('.input-group').querySelectorAll(`[data-setting="${setting}"]`);
+                siblings.forEach(el => {
+                    if (el !== target) el.value = value;
+                });
+                return value;
+            };
+
+            rgbaSlidersContainer.addEventListener('input', (e) => {
+                const customOption = backgroundColorSelect.querySelector('option[value="custom"]');
+                customOption.hidden = false;
+                backgroundColorSelect.value = 'custom';
+                syncSliderAndNumberInput(e.target);
+            });
+            
+            globalSettingsContainer.addEventListener('input', (e) => {
+                syncSliderAndNumberInput(e.target);
+            });
+            
+            availableEffectsContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('add-effect-btn')) {
+                    const effectType = e.target.dataset.effect;
+                    let newEffect = { type: effectType };
+                    // Set default settings for the new effect
+                    if (effectType === 'wheel') {
+                        newEffect.settings = { direction: 1, speed: 1, anchor: 'center' };
+                    } else if (effectType === 'pulse') {
+                        newEffect.settings = { speed: 1, minZoom: 80, maxZoom: 120, anchor: 'center' };
+                    } else if (effectType === 'wiggle') {
+                        newEffect.settings = { maxAngle: 15, speed: 1, anchor: 'center' };
+                    } else if (effectType === 'rainbow') {
+                        newEffect.settings = { angle: 45, speed: 1, frequency: 1, opacity: 50 };
+                    } else if (effectType === 'pixelate') {
+                        newEffect.settings = { blockSize: 8 };
+                    } else if (effectType === 'colorShift') {
+                        newEffect.settings = { mode: 'invert' };
+                    } else if (effectType === 'glitch') {
+                        newEffect.settings = { intensity: 20, blockiness: 8 };
+                    }
+                    activeEffects.push(newEffect);
+                    updateLayersUI();
+                }
+            });
+
+            const updateLayersUI = () => {
+                activeLayersContainer.innerHTML = '';
+                if (activeEffects.length === 0) {
+                    activeLayersContainer.appendChild(noEffectsMessage);
+                    generateFinalGifButton.disabled = true;
+                } else {
+                    generateFinalGifButton.disabled = false;
+                    activeEffects.forEach((effect, index) => {
+                        const layerEl = document.createElement('div');
+                        layerEl.className = 'layer-item';
+                        
+                        const header = document.createElement('div');
+                        header.className = 'layer-item-header';
+                        header.innerHTML = `
+                            <span class="font-medium capitalize">${effect.type.replace(/([A-Z])/g, ' $1')}</span>
+                            <div class="flex items-center space-x-1">
+                                <button data-index="${index}" class="move-up-btn p-1 rounded-full hover:bg-gray-200 disabled:opacity-50" ${index === 0 ? 'disabled' : ''}><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg></button>
+                                <button data-index="${index}" class="move-down-btn p-1 rounded-full hover:bg-gray-200 disabled:opacity-50" ${index === activeEffects.length - 1 ? 'disabled' : ''}><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                                <button data-index="${index}" class="remove-btn p-1 rounded-full hover:bg-red-100 text-red-500"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                            </div>
+                        `;
+                        layerEl.appendChild(header);
+
+                        const settingsContainer = document.createElement('div');
+                        settingsContainer.className = 'layer-settings';
+
+                        const anchorSelectHTML = `
+                            <div class="setting-control">
+                                <label for="anchor-${index}">Anchor Point</label>
+                                <div class="input-group" style="width: 50%; justify-content: flex-end;">
+                                <select id="anchor-${index}" data-index="${index}" data-setting="anchor" class="layer-setting" style="width: 100%;">
+                                    <option value="center" ${effect.settings.anchor === 'center' ? 'selected' : ''}>Center</option>
+                                    <option value="top-left" ${effect.settings.anchor === 'top-left' ? 'selected' : ''}>Top Left</option>
+                                    <option value="top-right" ${effect.settings.anchor === 'top-right' ? 'selected' : ''}>Top Right</option>
+                                    <option value="bottom-left" ${effect.settings.anchor === 'bottom-left' ? 'selected' : ''}>Bottom Left</option>
+                                    <option value="bottom-right" ${effect.settings.anchor === 'bottom-right' ? 'selected' : ''}>Bottom Right</option>
+                                </select>
+                                </div>
+                            </div>
+                        `;
+
+                        switch(effect.type) {
+                            case 'wheel':
+                                settingsContainer.innerHTML = `
+                                    <div class="setting-control">
+                                        <label for="direction-${index}">Direction</label>
+                                        <div class="input-group" style="width: 50%; justify-content: flex-end;">
+                                        <select id="direction-${index}" data-index="${index}" data-setting="direction" class="layer-setting" style="width: 100%;">
+                                            <option value="1" ${effect.settings.direction == 1 ? 'selected' : ''}>Clockwise</option>
+                                            <option value="-1" ${effect.settings.direction == -1 ? 'selected' : ''}>Counter-Clockwise</option>
+                                        </select>
+                                        </div>
+                                    </div>
+                                    ${createSlider('Speed', 'speed', 0.1, 5, 0.1, effect.settings.speed, index)}
+                                    ${anchorSelectHTML}
+                                `;
+                                break;
+                            case 'pulse':
+                                settingsContainer.innerHTML = `
+                                    ${createSlider('Min Zoom (%)', 'minZoom', 1, 200, 1, effect.settings.minZoom, index)}
+                                    ${createSlider('Max Zoom (%)', 'maxZoom', 1, 200, 1, effect.settings.maxZoom, index)}
+                                    ${createSlider('Speed', 'speed', 0.1, 5, 0.1, effect.settings.speed, index)}
+                                    ${anchorSelectHTML}
+                                `;
+                                break;
+                            case 'wiggle':
+                                settingsContainer.innerHTML = `
+                                    ${createSlider('Max Angle (°)', 'maxAngle', 1, 45, 1, effect.settings.maxAngle, index)}
+                                    ${createSlider('Speed', 'speed', 0.1, 5, 0.1, effect.settings.speed, index)}
+                                    ${anchorSelectHTML}
+                                `;
+                                break;
+                            case 'rainbow':
+                                settingsContainer.innerHTML = `
+                                    ${createSlider('Angle (°)', 'angle', 0, 360, 1, effect.settings.angle, index)}
+                                    ${createSlider('Frequency', 'frequency', 0.1, 10, 0.1, effect.settings.frequency, index)}
+                                    ${createSlider('Opacity (%)', 'opacity', 0, 100, 1, effect.settings.opacity, index)}
+                                    ${createSlider('Speed', 'speed', 0.1, 5, 0.1, effect.settings.speed, index)}
+                                `;
+                                break;
+                            case 'pixelate':
+                                settingsContainer.innerHTML = createSlider('Block Size', 'blockSize', 2, 32, 1, effect.settings.blockSize, index);
+                                break;
+                            case 'colorShift':
+                                settingsContainer.innerHTML = `
+                                    <div class="setting-control">
+                                        <label for="mode-${index}">Mode</label>
+                                        <div class="input-group" style="width: 50%; justify-content: flex-end;">
+                                        <select id="mode-${index}" data-index="${index}" data-setting="mode" class="layer-setting" style="width: 100%;">
+                                            <option value="invert" ${effect.settings.mode === 'invert' ? 'selected' : ''}>Invert</option>
+                                            <option value="red" ${effect.settings.mode === 'red' ? 'selected' : ''}>Red</option>
+                                            <option value="green" ${effect.settings.mode === 'green' ? 'selected' : ''}>Green</option>
+                                            <option value="blue" ${effect.settings.mode === 'blue' ? 'selected' : ''}>Blue</option>
+                                        </select>
+                                        </div>
+                                    </div>
+                                `;
+                                break;
+                            case 'glitch':
+                                settingsContainer.innerHTML = `
+                                    ${createSlider('Intensity (%)', 'intensity', 0, 100, 1, effect.settings.intensity, index)}
+                                    ${createSlider('Blockiness', 'blockiness', 1, 20, 1, effect.settings.blockiness, index)}
+                                `;
+                                break;
+                        }
+
+                        if (settingsContainer.innerHTML !== '') {
+                           layerEl.appendChild(settingsContainer);
+                        }
+                        
+                        activeLayersContainer.appendChild(layerEl);
+                    });
+                }
+            };
+
+            activeLayersContainer.addEventListener('input', (e) => {
+                const target = e.target;
+                if (target.classList.contains('layer-setting')) {
+                    const index = parseInt(target.dataset.index);
+                    const setting = target.dataset.setting;
+                    const value = syncSliderAndNumberInput(target);
+                    if (activeEffects[index].settings[setting] !== value) {
+                        activeEffects[index].settings[setting] = value;
+                    }
+                }
+            });
+
+            activeLayersContainer.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button || button.classList.contains('layer-setting')) return;
+                const index = parseInt(button.dataset.index);
+
+                if (button.classList.contains('remove-btn')) {
+                    activeEffects.splice(index, 1);
+                } else if (button.classList.contains('move-up-btn') && index > 0) {
+                    [activeEffects[index], activeEffects[index - 1]] = [activeEffects[index - 1], activeEffects[index]];
+                } else if (button.classList.contains('move-down-btn') && index < activeEffects.length - 1) {
+                    [activeEffects[index], activeEffects[index + 1]] = [activeEffects[index + 1], activeEffects[index]];
+                }
+                updateLayersUI();
+            });
+
+            const startPreview = () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                let startTime = null;
+                const loop = (timestamp) => {
+                    if (!startTime) startTime = timestamp;
+                    const duration = parseFloat(document.querySelector('[data-setting="duration"]').value) * 1000;
+                    let elapsed = (timestamp - startTime) % duration;
+                    
+                    drawFrame(previewCtx, elapsed);
+                    animationFrameId = requestAnimationFrame(loop);
+                };
+                animationFrameId = requestAnimationFrame(loop);
+            };
+
+            const stopPreview = () => {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+            };
+
+            const drawFrame = (ctx, elapsed) => {
+                const w = ctx.canvas.width;
+                const h = ctx.canvas.height;
+                
+                ctx.clearRect(0, 0, w, h);
+
+                const r_bg = document.querySelector('[data-setting="bg-r"]').value;
+                const g_bg = document.querySelector('[data-setting="bg-g"]').value;
+                const b_bg = document.querySelector('[data-setting="bg-b"]').value;
+                const a_bg = document.querySelector('[data-setting="bg-a"]').value;
+                if (a_bg > 0) {
+                    ctx.fillStyle = `rgba(${r_bg},${g_bg},${b_bg},${a_bg})`;
+                    ctx.fillRect(0, 0, w, h);
+                }
+
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(croppedImage, 0, 0);
+
+                const pixelateEffect = activeEffects.find(e => e.type === 'pixelate');
+                if (pixelateEffect) {
+                    tempCtx.imageSmoothingEnabled = false;
+                    const size = pixelateEffect.settings.blockSize;
+                    const tinyW = w / size;
+                    const tinyH = h / size;
+                    tempCtx.drawImage(tempCanvas, 0, 0, tinyW, tinyH);
+                    tempCtx.drawImage(tempCanvas, 0, 0, tinyW, tinyH, 0, 0, w, h);
+                    tempCtx.imageSmoothingEnabled = true;
+                }
+
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+
+                activeEffects.forEach(effect => {
+                    if (['wheel', 'pulse', 'wiggle'].includes(effect.type)) {
+                        const settings = effect.settings;
+                        let ax = 0, ay = 0;
+                        switch(settings.anchor) {
+                            case 'top-left': ax = -w / 2; ay = -h / 2; break;
+                            case 'top-right': ax = w / 2; ay = -h / 2; break;
+                            case 'bottom-left': ax = -w / 2; ay = h / 2; break;
+                            case 'bottom-right': ax = w / 2; ay = h / 2; break;
+                        }
+                        ctx.translate(ax, ay);
+                        switch (effect.type) {
+                            case 'wheel':
+                                const angle = (elapsed / 2000) * Math.PI * 2 * settings.direction * settings.speed;
+                                ctx.rotate(angle);
+                                break;
+                            case 'pulse':
+                                const pulseDuration = 2000 / settings.speed;
+                                const pulseProgress = (elapsed % pulseDuration) / pulseDuration;
+                                const sinValue = Math.sin(pulseProgress * 2 * Math.PI);
+                                const scale = (settings.minZoom/100) + ((settings.maxZoom/100) - (settings.minZoom/100)) * (sinValue + 1) / 2;
+                                ctx.scale(scale, scale);
+                                break;
+                            case 'wiggle':
+                                const wiggleDuration = 2000 / settings.speed;
+                                const wiggleProgress = (elapsed % wiggleDuration) / wiggleDuration;
+                                const wiggleAngle = Math.sin(wiggleProgress * 2 * Math.PI) * (settings.maxAngle * (Math.PI / 180));
+                                ctx.rotate(wiggleAngle);
+                                break;
+                        }
+                        ctx.translate(-ax, -ay);
+                    }
+                });
+
+                ctx.drawImage(tempCanvas, -w / 2, -h / 2);
+
+                activeEffects.forEach(effect => {
+                    switch(effect.type) {
+                        case 'colorShift':
+                            ctx.globalCompositeOperation = effect.settings.mode === 'invert' ? 'difference' : 'multiply';
+                            let color = 'white';
+                            if (effect.settings.mode === 'red') color = '#ff0000';
+                            if (effect.settings.mode === 'green') color = '#00ff00';
+                            if (effect.settings.mode === 'blue') color = '#0000ff';
+                            ctx.fillStyle = color;
+                            ctx.fillRect(-w / 2, -h / 2, w, h);
+                            ctx.globalCompositeOperation = 'source-over';
+                            break;
+                        case 'rainbow':
+                            ctx.globalAlpha = effect.settings.opacity / 100;
+                            ctx.globalCompositeOperation = 'overlay';
+                            const angleRad = effect.settings.angle * (Math.PI / 180);
+                            const r = Math.sqrt(w*w + h*h) / 2;
+                            const x0 = -Math.cos(angleRad) * r;
+                            const y0 = -Math.sin(angleRad) * r;
+                            const x1 = Math.cos(angleRad) * r;
+                            const y1 = Math.sin(angleRad) * r;
+                            const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+                            const colors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#8b00ff', '#ff0000'];
+                            const offset = (elapsed / (3000 / effect.settings.speed)) % 1;
+                            const frequency = effect.settings.frequency;
+                            const numColorStops = colors.length - 1;
+                            const cycleLength = 1 / frequency;
+                            const totalCycles = Math.ceil(frequency) + 1;
+                            for (let c = -1; c < totalCycles; c++) {
+                                for (let i = 0; i < colors.length; i++) {
+                                    let position = (c * cycleLength) + ((i / numColorStops) * cycleLength) - (offset * cycleLength);
+                                    if (position >= 0 && position <= 1) {
+                                        grad.addColorStop(position, colors[i]);
+                                    }
+                                }
+                            }
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(-w / 2, -h / 2, w, h);
+                            ctx.globalCompositeOperation = 'source-over';
+                            ctx.globalAlpha = 1.0;
+                            break;
+                    }
+                });
+                
+                ctx.restore();
+
+                const glitchEffect = activeEffects.find(e => e.type === 'glitch');
+                if (glitchEffect && Math.random() < glitchEffect.settings.intensity / 100) {
+                    const imageData = ctx.getImageData(0, 0, w, h);
+                    const pixels = imageData.data;
+                    const numRows = Math.floor(Math.random() * 10);
+                    for (let i = 0; i < numRows; i++) {
+                        const y = Math.floor(Math.random() * h);
+                        const rowHeight = Math.floor(Math.random() * glitchEffect.settings.blockiness) + 1;
+                        const shift = Math.floor((Math.random() - 0.5) * 40);
+                        for (let row = 0; row < rowHeight; row++) {
+                            if (y + row >= h) continue;
+                            const startIdx = (y + row) * w * 4;
+                            const rowData = pixels.slice(startIdx, startIdx + w * 4);
+                            if (shift > 0) {
+                                pixels.copyWithin(startIdx + shift * 4, startIdx, startIdx + (w - shift) * 4);
+                                pixels.set(rowData.slice(0, shift * 4), startIdx);
+                            } else {
+                                pixels.copyWithin(startIdx, startIdx - shift * 4, startIdx + w * 4);
+                                pixels.set(rowData.slice((w + shift) * 4), startIdx + (w + shift) * 4);
+                            }
+                        }
+                    }
+                    ctx.putImageData(imageData, 0, 0);
+                }
+            };
+            
+            generateFinalGifButton.addEventListener('click', () => {
+                if (!croppedImage || !gifWorkerUrl) return;
+                
+                const button = generateFinalGifButton;
+                button.disabled = true;
+                button.textContent = 'Generating...';
+
+                const duration = parseFloat(document.querySelector('[data-setting="duration"]').value) * 1000;
+                const gif = new GIF({ workers: 2, quality: 10, width: croppedImage.width, height: croppedImage.height, workerScript: gifWorkerUrl });
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = croppedImage.width;
+                tempCanvas.height = croppedImage.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                const frameDelay = 50; // 20 FPS
+                const numFrames = Math.floor(duration / frameDelay);
+
+                for (let i = 0; i < numFrames; i++) {
+                    const elapsed = i * frameDelay;
+                    drawFrame(tempCtx, elapsed);
+                    gif.addFrame(tempCtx, { copy: true, delay: frameDelay });
+                }
+
+                gif.on('finished', (blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'generated.gif';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    
+                    button.disabled = false;
+                    button.textContent = 'Generate & Download GIF';
+                });
+
+                gif.render();
+            });
+
+            startOverButton.addEventListener('click', () => {
+                stopPreview();
+                if (cropper) cropper.destroy();
+                cropper = null;
+                croppedImage = null;
+                activeEffects = [];
+                updateLayersUI();
+                imageUploadInput.value = '';
+                imageToCrop.src = '';
+                
+                stepGenerate.classList.add('hidden');
+                stepCrop.classList.add('hidden');
+                stepUpload.classList.remove('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
